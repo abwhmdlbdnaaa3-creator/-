@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f3ed"><meta name="description" content="ومض — مذكرة شخصية بسيطة">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>وَمْض | مذكرتك</title>
+<style>
+:root{color-scheme:light;--bg:#f5f3ed;--paper:#fffefa;--ink:#242820;--muted:#77796f;--line:#e7e3d9;--accent:#344b3b;--soft:#e8eee7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
+main{max-width:720px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px calc(35px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:12px;margin:7px 0 24px}.logo{width:46px;height:46px;border-radius:16px;background:var(--accent);color:white;display:grid;place-items:center;font-size:25px}
+h1{font-size:23px;margin:0}.sub{font-size:13px;color:var(--muted);margin-top:4px}
+.panel,.note{background:var(--paper);border:1px solid var(--line);border-radius:21px}.panel{padding:16px;box-shadow:0 8px 28px #20251a08}
+textarea{width:100%;min-height:145px;resize:vertical;border:0;outline:0;background:transparent;font:inherit;font-size:17px;line-height:1.85;color:var(--ink)}textarea::placeholder{color:#a0a197}
+.actions{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+button{font:inherit;border:0;border-radius:13px;padding:11px 16px;cursor:pointer}.primary{background:var(--accent);color:white;font-weight:650}.muted-btn{background:#f0efe9;color:var(--ink)}
+#status{font-size:12px;color:var(--muted);min-height:18px;margin-top:9px}
+h2{font-size:16px;margin:25px 2px 12px}.note{padding:14px;margin:9px 0}.note-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.tag{font-size:12px;padding:5px 9px;border-radius:999px;color:#344b3b}.date{font-size:11px;color:var(--muted)}.note-text{white-space:pre-wrap;line-height:1.75;font-size:15px;overflow-wrap:anywhere}
+.note-actions{display:flex;justify-content:flex-end;margin-top:8px}.delete{font-size:12px;background:transparent;color:#8b625a;padding:5px 8px}.empty{text-align:center;color:var(--muted);font-size:13px;padding:20px 8px}
+.footer{font-size:12px;color:var(--muted);line-height:1.8;margin:20px 4px}.top-actions{margin-right:auto}
+@media(min-width:600px){main{padding-top:36px}.panel{padding:21px}}
+</style></head><body><main>
+<header><div class="logo">✦</div><div><h1>وَمْض</h1><div class="sub">اكتب ما يخطر لك… ودع التنظيم يبدأ</div></div><button id="install" class="muted-btn top-actions" hidden>تثبيت</button></header>
+<section class="panel"><textarea id="entry" placeholder="اكتب ملاحظة، فكرة، شيء تعلمته، أو أمرًا تريد تذكّره…"></textarea><div class="actions"><span class="sub">مساحتك الخاصة، كلمةً بعد كلمة</span><button class="primary" id="save">احفظ ←</button></div><div id="status" aria-live="polite"></div></section>
+<section id="similar-section" hidden><h2>ملاحظات قد ترتبط بها</h2><div id="similar"></div></section>
+<section><h2>ملاحظاتك</h2><div id="notes"></div></section>
+<p class="footer">تُحفظ ملاحظاتك على هذا الجهاز وتبقى متاحة دون إنترنت بعد فتح التطبيق مرة واحدة. لا تمسح بيانات المتصفح إذا أردت الاحتفاظ بها. التصنيف والتشابه ذكيان بشكل مبدئي ويعملان محليًا.</p>
+</main>
+<script>
+const KEY='wamd_notes_v1', entry=document.getElementById('entry'), statusEl=document.getElementById('status');
+let notes=[];try{notes=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+const rules=[
+{name:'دراسة وتعليم',color:'#dce9fb',words:['رياضيات','الرياضيات','حساب','جبر','هندسة','فيزياء','كيمياء','أحياء','درس','درست','مذاكرة','مدرسة','اختبار','واجب','تعليم','تعلم','منهج','إنجليزي','انجليزي','عربي','تاريخ','علوم']},
+{name:'أفكار',color:'#eadff8',words:['فكرة','أفكار','اختراع','مشروع','أقترح','اقتراح','تطبيق','برنامج','قناة','سيارة','سيارات','تصميم','ابتكار']},
+{name:'مهام وتذكيرات',color:'#f9e7ce',words:['لازم','يجب','تذكير','ذكرني','ذكّرني','موعد','بكرة','غدا','غداً','غدًا','لاحقاً','لاحقا','أعمل','اعمل','أنجز','انجز']},
+{name:'يوميات وملاحظات',color:'#dcefe4',words:[]}];
+function classify(t){let best=rules[3],score=0;for(const r of rules){const s=r.words.reduce((n,w)=>n+(t.toLowerCase().includes(w)?1:0),0);if(s>score){best=r;score=s}}return best}
+function tokens(t){return t.toLowerCase().replace(/[^\u0600-\u06FFa-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2&&!['اليوم','كانت','كان','هذا','هذه','على','الى','إلى','من','في','مع','انه','أن','أنا','كنت','جدا','جداً'].includes(w))}
+function similarity(a,b){const A=new Set(tokens(a)),B=new Set(tokens(b));if(!A.size||!B.size)return 0;let n=0;for(const w of A)if(B.has(w))n++;return n/(A.size+B.size-n)}
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function card(n,del=true){const r=rules.find(x=>x.name===n.category)||rules[3];return `<article class="note"><div class="note-top"><span class="tag" style="background:${r.color}">${esc(n.category)}</span><span class="date">${new Date(n.created).toLocaleString('ar',{dateStyle:'medium',timeStyle:'short'})}</span></div><div class="note-text">${esc(n.text)}</div>${del?`<div class="note-actions"><button class="delete" data-delete="${n.id}">حذف</button></div>`:''}</article>`}
+function persist(){localStorage.setItem(KEY,JSON.stringify(notes))}
+function render(){const root=document.getElementById('notes');root.innerHTML=notes.length?notes.slice().sort((a,b)=>b.created-a.created).map(n=>card(n)).join(''):'<div class="empty">لم تحفظ أي ملاحظة بعد. اكتب أول ومضة لك.</div>';root.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{if(confirm('هل تريد حذف هذه الملاحظة؟')){notes=notes.filter(n=>n.id!==b.dataset.delete);persist();render();statusEl.textContent='حُذفت الملاحظة.'}}))}
+function showSimilar(t){const matches=notes.map(n=>({...n,score:similarity(t,n.text)})).filter(n=>n.score>0).sort((a,b)=>b.score-a.score).slice(0,3);document.getElementById('similar-section').hidden=!matches.length;document.getElementById('similar').innerHTML=matches.map(n=>card(n,false)).join('')}
+document.getElementById('save').addEventListener('click',()=>{const t=entry.value.trim();if(!t){statusEl.textContent='اكتب شيئًا أولًا.';entry.focus();return}showSimilar(t);const c=classify(t);notes.push({id:Date.now()+'-'+Math.random().toString(16).slice(2),text:t,category:c.name,created:Date.now()});persist();render();entry.value='';statusEl.textContent='حُفظت في «'+c.name+'».';entry.focus()});
+entry.addEventListener('input',()=>{if(entry.value.trim().length>5)showSimilar(entry.value.trim());else document.getElementById('similar-section').hidden=true});
+entry.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')document.getElementById('save').click()});
+render();
+let deferredPrompt;const installBtn=document.getElementById('install');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.hidden=false});installBtn.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.hidden=true});
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script></body></html>
